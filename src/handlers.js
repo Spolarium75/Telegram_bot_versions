@@ -1,75 +1,83 @@
-// src/handlers.js
+const config = require('../config/config');
+const { formatDuration } = require('./utils');
 
-function getMainMenu() {
-    return {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "⏰ Add Timer", callback_data: "add_timer" }],
-                [{ text: "🕒 Current Timer", callback_data: "current_timer" }],
-                [{ text: "📜 Timer History", callback_data: "timer_history" }],
-                [{ text: "❓ Help", callback_data: "help" }]
-            ]
-        }
+function startCountdown(bot, chatId, totalSeconds, label, timers, historyStore) {
+    const reminders = config.reminders || [1800, 1200, 600, 300, 60, 10];
+    const sent = new Set();
+
+    const startedAt = Date.now();
+    const endsAt = startedAt + totalSeconds * 1000;
+
+    timers[chatId] = {
+        ...(timers[chatId] || {}),
+        label,
+        totalSeconds,
+        startedAt,
+        endsAt,
+        status: "active"
     };
-}
-
-function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [1800,1200,600,300,60,10], db, timerId) {
-    const sentCheckpoints = new Set();
-    let elapsed = 0;
 
     const interval = setInterval(() => {
-        const remaining = totalSeconds - elapsed;
+        const remaining = Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
 
-        // Send checkpoint reminders
-        for (let cp of notifications) {
-            if (remaining <= cp && !sentCheckpoints.has(cp)) {
-                let msg =
-                    cp >= 60
-                        ? `⏳ *${timerLabel}*: ${Math.floor(cp / 60)} minute${Math.floor(cp / 60) !== 1 ? "s" : ""} remaining!`
-                        : `⏳ *${timerLabel}*: ${cp} second${cp !== 1 ? "s" : ""} remaining!`;
-
-                bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
-                sentCheckpoints.add(cp);
+        for (const cp of reminders) {
+            if (remaining === cp && !sent.has(cp)) {
+                if (cp >= 60) {
+                    bot.sendMessage(
+                        chatId,
+                        `⏳ ${label}: ${Math.floor(cp / 60)} minute${Math.floor(cp / 60) !== 1 ? "s" : ""} remaining!`
+                    );
+                } else {
+                    bot.sendMessage(chatId, `⏳ ${label}: ${cp} seconds remaining!`);
+                }
+                sent.add(cp);
             }
         }
 
-        // Final countdown
+        if (remaining <= 10 && remaining > 0 && !sent.has(`final-${remaining}`)) {
+            bot.sendMessage(
+                chatId,
+                `⏱ ${label}: ${remaining} second${remaining !== 1 ? "s" : ""} remaining!`
+            );
+            sent.add(`final-${remaining}`);
+        }
+
         if (remaining <= 0) {
             clearInterval(interval);
 
-            let count = 10;
-            const finalInterval = setInterval(() => {
-                if (count > 0) {
-                    bot.sendMessage(
-                        chatId,
-                        `⏱ *${timerLabel}*: ${count} second${count !== 1 ? "s" : ""} remaining!`,
-                        { parse_mode: "Markdown" }
-                    );
-                } else {
-                    bot.sendMessage(
-                        chatId,
-                        `🎉 *${timerLabel}* has reached the target time!\n\nWhat would you like to do next?`,
-                        {
-                            parse_mode: "Markdown",
-                            ...getMainMenu()
-                        }
-                    );
-
-                    if (db && timerId) {
-                        db.run(`UPDATE timers SET finished = 1 WHERE id = ?`, [timerId]);
-                    }
-
-                    clearInterval(finalInterval);
+            bot.sendMessage(chatId, `🎉 ${label} has reached the target time!`, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "Add Timer", callback_data: "add_timer" }],
+                        [{ text: "Status", callback_data: "status" }],
+                        [{ text: "Stop", callback_data: "stop" }]
+                    ]
                 }
+            });
 
-                count--;
-            }, 1000);
+            if (historyStore && Array.isArray(historyStore[chatId])) {
+                historyStore[chatId].unshift({
+                    label,
+                    totalSeconds,
+                    status: "finished",
+                    createdAt: new Date().toISOString()
+                });
+                historyStore[chatId] = historyStore[chatId].slice(0, 10);
+            }
+
+            delete timers[chatId];
         }
-
-        elapsed++;
     }, 1000);
 
+    timers[chatId].interval = interval;
     return interval;
 }
 
-module.exports = { startCountdown, getMainMenu };
+function getCurrentTimerText(timerInfo) {
+    if (!timerInfo || !timerInfo.endsAt) return "No active timer.";
+
+    const remainingSeconds = Math.max(0, Math.floor((timerInfo.endsAt - Date.now()) / 1000));
+    return `${timerInfo.label} - ${formatDuration(remainingSeconds)} (⏳ Active)`;
+}
+
+module.exports = { startCountdown, getCurrentTimerText };
