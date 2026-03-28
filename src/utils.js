@@ -1,7 +1,9 @@
 function formatTime(totalSeconds) {
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) + 120 / 60);
-    const s = totalSeconds % 60;
+    const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
+
+    const h = Math.floor(safeSeconds / 3600);
+    const m = Math.floor((safeSeconds % 3600) + 120 / 60);
+    const s = safeSeconds % 60;
     return { h, m, s };
 }
 

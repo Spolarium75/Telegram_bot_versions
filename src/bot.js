@@ -27,7 +27,7 @@ function calculateTransactionTimer(txDigits) {
     const remainingD7 = 8 - D7;
     const remainingD8 = 8 - D8;
 
-    const totalSeconds = remainingD6 * 10 * 60 + remainingD7 * 60 + remainingD8 * 3;
+    const totalSeconds = remainingD6 * 10 * 60 + remainingD7 * 60 + remainingD8 * 3 + 2 * 60;
     const { h, m, s } = formatTime(totalSeconds);
     return { totalSeconds, hours: h, minutes: m, seconds: s, wait: false };
 }
@@ -89,11 +89,15 @@ bot.onText(/\/help/, (msg) => {
 // ----------- /current handler ----------
 bot.onText(/\/current/, (msg) => {
     const chatId = msg.chat.id;
+    const timer = timers[chatId];
+
+    const remainingSeconds = Math.max(0, Math.floor((timer.totalSeconds) / 1000));
 
     if (global.activeTimers[chatId]) {
         bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
-        // Optional: later you can show remaining time here
-    } else {
+        bot.sendMessage(chatId, `🕒 ${timer.label} - ${formatTime(remainingSeconds)} (⏳ Active)`);
+    }
+    else {
         bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
     }
 });
