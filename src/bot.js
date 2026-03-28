@@ -4,7 +4,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config/config');
 const db = require('../db');
 const { startCountdown, getMainMenu } = require('./handlers');
-const { formatDuration } = require('./utils');
+const { formatTime } = require('./utils');
 
 const bot = new TelegramBot(config.token, { polling: true });
 
@@ -86,34 +86,16 @@ bot.onText(/\/help/, (msg) => {
     bot.sendMessage(chatId, helpText, { parse_mode: "Markdown", ...getMainMenu() });
 });
 
-bot.onText(/\/current/, async (msg) => {
-  await ensureUser(msg);
+// ----------- /current handler ----------
+bot.onText(/\/current/, (msg) => {
+    const chatId = msg.chat.id;
 
-  const chatId = msg.chat.id;
-  const session = getSession(chatId);
-
-  if (session.currentTimer) {
-    const remainingSeconds = Math.max(
-      0,
-      Math.floor((session.currentTimer.endsAt - Date.now()) / 1000)
-    );
-
-    await bot.sendMessage(
-      chatId,
-      `🕒 *Current Timer*\n\n` +
-      `${session.currentTimer.label} - ${formatDuration(remainingSeconds)} (⏳ Active)`,
-      {
-        parse_mode: "Markdown",
-        ...mainMenuKeyboard()
-      }
-    );
-  } else {
-    await bot.sendMessage(
-      chatId,
-      "🕒 No active timer.",
-      mainMenuKeyboard()
-    );
-  }
+    if (global.activeTimers[chatId]) {
+        bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
+        // Optional: later you can show remaining time here
+    } else {
+        bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
+    }
 });
 
 // ----------- /history handler ----------
@@ -124,31 +106,17 @@ bot.onText(/\/history/, (msg) => {
         `SELECT * FROM timers WHERE chat_id = ? ORDER BY created_at DESC LIMIT 10`,
         [chatId],
         (err, rows) => {
-            if (err) {
-                console.error(err);
-                return bot.sendMessage(chatId, "❌ Failed to load timer history.", { ...getMainMenu() });
+            if (err) return console.error(err);
+
+            if (rows.length === 0) {
+                bot.sendMessage(chatId, "📜 No timer history found.", { ...getMainMenu() });
+            } else {
+                let historyText = "📜 *Last 10 timers:*\n";
+                rows.forEach((row) => {
+                    historyText += `- ${row.label} | ${row.finished ? "Finished ✅" : "Running ⏳"}\n`;
+                });
+                bot.sendMessage(chatId, historyText, { parse_mode: "Markdown", ...getMainMenu() });
             }
-
-            if (!rows.length) {
-                return bot.sendMessage(chatId, "📜 No timer history found.", { ...getMainMenu() });
-            }
-
-            let historyText = "📜 *Last 10 timers:*\n\n";
-
-            rows.forEach((row, index) => {
-                const durationText = formatDuration(row.total_seconds || 0);
-                const statusText = row.finished ? "Finished ✅" : "Running ⏳";
-
-                historyText +=
-                    `${index + 1}. *${row.label || "Unnamed Timer"}*\n` +
-                    `Duration: ${durationText}\n` +
-                    `Status: ${statusText}\n\n`;
-            });
-
-            bot.sendMessage(chatId, historyText, {
-                parse_mode: "Markdown",
-                ...getMainMenu()
-            });
         }
     );
 });

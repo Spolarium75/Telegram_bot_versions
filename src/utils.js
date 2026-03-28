@@ -1,11 +1,13 @@
 function formatDuration(totalSeconds) {
-    const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
+  const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
 
-    const h = Math.floor(safeSeconds / 3600);
-    const m = Math.floor((safeSeconds % 3600) / 60);
-    const s = safeSeconds % 60;
+  const h = Math.floor(safeSeconds / 3600);
+  const m = Math.floor((safeSeconds % 3600) / 60);
+  const s = safeSeconds % 60;
 
-    return `${h}h ${m}m ${s}s`;
+  return `${h}h ${m}m ${s}s`;
 }
 
-module.exports = { formatDuration };
+module.exports = {
+  formatDuration
+};
