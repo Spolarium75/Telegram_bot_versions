@@ -7,9 +7,17 @@ const { startCountdown, getMainMenu } = require('./handlers');
 const { formatTime } = require('./utils');
 
 const bot = new TelegramBot(config.token, { polling: true });
+
+bot.setMyCommands([
+    { command: "start", description: "Show main menu" },
+    { command: "current", description: "Show current timer" },
+    { command: "history", description: "Show timer history" },
+    { command: "help", description: "Show bot help / shortcuts" },
+    { command: "stop", description: "Stop the active timer" }
+]);
+
 const timers = {};
 
-// Transaction timer calculation
 function calculateTransactionTimer(txDigits) {
     const [D6, D7, D8] = txDigits.split('').map(Number);
 
