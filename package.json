@@ -1,0 +1,23 @@
+{
+  "name": "telegram-timer-bot",
+  "version": "1.0.0",
+  "description": "Telegram timer bot with manual and transaction timers, history, persistence, and customizable reminders.",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "timer",
+    "nodejs",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "sqlite3": "^5.1.7"
+  }
+}
