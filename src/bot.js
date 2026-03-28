@@ -3,7 +3,7 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config/config');
 const db = require('../db');
-const { startCountdown } = require('./handlers');
+const { startCountdown, getMainMenu } = require('./handlers');
 const { formatTime } = require('./utils');
 
 const bot = new TelegramBot(config.token, { polling: true });
@@ -40,23 +40,18 @@ db.all(`SELECT * FROM timers WHERE finished = 0`, [], (err, rows) => {
     }
 });
 
-// /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const { first_name, last_name, username } = msg.from;
 
-    db.run(`INSERT OR REPLACE INTO users (chat_id, first_name, last_name, username) VALUES (?, ?, ?, ?)`,
-        [chatId, first_name || '', last_name || '', username || '']);
+    db.run(
+        `INSERT OR REPLACE INTO users (chat_id, first_name, last_name, username) VALUES (?, ?, ?, ?)`,
+        [chatId, first_name || '', last_name || '', username || '']
+    );
 
-    bot.sendMessage(chatId, "👋 Welcome! Choose an option:", {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "⏰ Add Timer", callback_data: 'add_timer' }],
-                [{ text: "🕒 Current Timer", callback_data: 'current_timer' }],
-                [{ text: "📜 Timer History", callback_data: 'timer_history' }],
-                [{ text: "❓ Help", callback_data: 'help' }]
-            ]
-        }
+    bot.sendMessage(chatId, "👋 *Welcome!* Choose an option below:", {
+        parse_mode: "Markdown",
+        ...getMainMenu()
     });
 });
 
