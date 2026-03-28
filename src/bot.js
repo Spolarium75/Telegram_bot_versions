@@ -48,6 +48,8 @@ db.all(`SELECT * FROM timers WHERE finished = 0`, [], (err, rows) => {
     }
 });
 
+global.activeTimers = {};
+
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const { first_name, last_name, username } = msg.from;
