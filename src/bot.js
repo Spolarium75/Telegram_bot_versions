@@ -68,19 +68,6 @@ bot.onText(/\/start/, (msg) => {
     });
 });
 
-// ----------- /stop handler ----------
-bot.onText(/\/stop/, (msg) => {
-    const chatId = msg.chat.id;
-
-    if (global.activeTimers[chatId]) {
-        clearInterval(global.activeTimers[chatId]);
-        delete global.activeTimers[chatId];
-        bot.sendMessage(chatId, "⏹ Timer has been stopped.", { ...getMainMenu() });
-    } else {
-        bot.sendMessage(chatId, "❌ No active timer to stop.", { ...getMainMenu() });
-    }
-});
-
 // ----------- /help handler ----------
 bot.onText(/\/help/, (msg) => {
     const chatId = msg.chat.id;
