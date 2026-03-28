@@ -57,10 +57,97 @@ bot.onText(/\/start/, (msg) => {
         [chatId, first_name || '', last_name || '', username || '']
     );
 
-    bot.sendMessage(chatId, "👋 *Welcome!* Choose an option below:", {
+    const startText = `
+👋 *Welcome!* Choose an option below or use shortcuts:
+/start, /current, /history, /help, /stop
+`;
+
+    bot.sendMessage(chatId, startText, {
         parse_mode: "Markdown",
         ...getMainMenu()
     });
+});
+
+// ----------- /stop handler ----------
+bot.onText(/\/stop/, (msg) => {
+    const chatId = msg.chat.id;
+
+    if (global.activeTimers[chatId]) {
+        clearInterval(global.activeTimers[chatId]);
+        delete global.activeTimers[chatId];
+        bot.sendMessage(chatId, "⏹ Timer has been stopped.", { ...getMainMenu() });
+    } else {
+        bot.sendMessage(chatId, "❌ No active timer to stop.", { ...getMainMenu() });
+    }
+});
+
+// ----------- /help handler ----------
+bot.onText(/\/help/, (msg) => {
+    const chatId = msg.chat.id;
+
+    const helpText = `
+📌 *Bot Shortcuts:*
+/start - Show main menu
+/current - Show current timer
+/history - Show timer history
+/help - Show this message
+/stop - Stop the active timer
+`;
+
+    bot.sendMessage(chatId, helpText, { parse_mode: "Markdown", ...getMainMenu() });
+});
+
+// ----------- /current handler ----------
+bot.onText(/\/current/, (msg) => {
+    const chatId = msg.chat.id;
+
+    if (global.activeTimers[chatId]) {
+        bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
+        // Optional: later you can show remaining time here
+    } else {
+        bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
+    }
+});
+
+// ----------- /history handler ----------
+bot.onText(/\/history/, (msg) => {
+    const chatId = msg.chat.id;
+
+    db.all(
+        `SELECT * FROM timers WHERE chat_id = ? ORDER BY created_at DESC LIMIT 10`,
+        [chatId],
+        (err, rows) => {
+            if (err) return console.error(err);
+
+            if (rows.length === 0) {
+                bot.sendMessage(chatId, "📜 No timer history found.", { ...getMainMenu() });
+            } else {
+                let historyText = "📜 *Last 10 timers:*\n";
+                rows.forEach((row) => {
+                    historyText += `- ${row.label} | ${row.finished ? "Finished ✅" : "Running ⏳"}\n`;
+                });
+                bot.sendMessage(chatId, historyText, { parse_mode: "Markdown", ...getMainMenu() });
+            }
+        }
+    );
+});
+
+// ----------- Example: manual /add timer ----------
+bot.onText(/\/add (\d+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const minutes = parseInt(match[1]);
+    const totalSeconds = minutes * 60;
+    const timerLabel = `Manual Timer (${minutes} min)`;
+
+    if (global.activeTimers[chatId]) {
+        bot.sendMessage(chatId, "❌ You already have an active timer. Use /stop first.", { ...getMainMenu() });
+        return;
+    }
+
+    const intervalId = startCountdown(bot, chatId, totalSeconds, timerLabel, undefined, db, null);
+    global.activeTimers[chatId] = intervalId;
+
+    bot.sendMessage(chatId, `⏱ Timer started for ${minutes} minute(s)!`, { ...getMainMenu() });
 });
 
 // Callback queries
