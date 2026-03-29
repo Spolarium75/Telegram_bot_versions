@@ -91,12 +91,11 @@ bot.onText(/\/current/, (msg) => {
 
     const remainingSeconds = Math.max(0, Math.floor((timer.totalSeconds) / 1000));
 
-    if (timer[chatId]) {
+    if (!timer) {
+        bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
+    } else {
         bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
         bot.sendMessage(chatId, `🕒 ${timer.label} - ${formatTime(remainingSeconds)} (⏳ Active)`);
-    }
-    else {
-        bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
     }
 });
 
@@ -124,7 +123,7 @@ bot.onText(/\/history/, (msg) => {
 });
 
 // ----------- Example: manual /add timer ----------
-bot.onText(/\/add (\d+)/, (msg, match) => {
+bot.onText(/\/add/, (msg, match) => {
     const chatId = msg.chat.id;
     const minutes = parseInt(match[1]);
     const totalSeconds = minutes * 60;
@@ -146,8 +145,8 @@ bot.onText(/\/add (\d+)/, (msg, match) => {
 bot.onText(/\/stop/, (msg) => {
     const chatId = msg.chat.id;
     const timer = timers[chatId];
-    if (timer && timer.interval) {
-        clearInterval(timer.interval);
+    if (timer && timer.total_seconds) {
+        clearInterval(timer.total_seconds);
         delete timers[chatId];
         bot.sendMessage(chatId, "🛑 Timer stopped.");
     } else bot.sendMessage(chatId, "No active timer to stop.");
