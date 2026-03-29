@@ -48,8 +48,6 @@ db.all(`SELECT * FROM timers WHERE finished = 0`, [], (err, rows) => {
     }
 });
 
-global.activeTimers = {};
-
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const { first_name, last_name, username } = msg.from;
@@ -60,9 +58,9 @@ bot.onText(/\/start/, (msg) => {
     );
 
     const startText = `
-👋 *Welcome!* Choose an option below or use shortcuts:
-/start, /current, /history, /help, /stop
-`;
+    👋 *Welcome!* Choose an option below or use shortcuts:
+    /start, /current, /history, /help, /stop
+    `;
 
     bot.sendMessage(chatId, startText, {
         parse_mode: "Markdown",
@@ -75,13 +73,13 @@ bot.onText(/\/help/, (msg) => {
     const chatId = msg.chat.id;
 
     const helpText = `
-📌 *Bot Shortcuts:*
-/start - Show main menu
-/current - Show current timer
-/history - Show timer history
-/help - Show this message
-/stop - Stop the active timer
-`;
+    📌 *Bot Shortcuts:*
+    /start - Show main menu
+    /current - Show current timer
+    /history - Show timer history
+    /help - Show this message
+    /stop - Stop the active timer
+    `;
 
     bot.sendMessage(chatId, helpText, { parse_mode: "Markdown", ...getMainMenu() });
 });
@@ -93,7 +91,7 @@ bot.onText(/\/current/, (msg) => {
 
     const remainingSeconds = Math.max(0, Math.floor((timer.totalSeconds) / 1000));
 
-    if (global.activeTimers[chatId]) {
+    if (timer[chatId]) {
         bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
         bot.sendMessage(chatId, `🕒 ${timer.label} - ${formatTime(remainingSeconds)} (⏳ Active)`);
     }
@@ -131,16 +129,28 @@ bot.onText(/\/add (\d+)/, (msg, match) => {
     const minutes = parseInt(match[1]);
     const totalSeconds = minutes * 60;
     const timerLabel = `Manual Timer (${minutes} min)`;
+    const timer = timers[chatId];
 
-    if (global.activeTimers[chatId]) {
+    if (timer) {
         bot.sendMessage(chatId, "❌ You already have an active timer. Use /stop first.", { ...getMainMenu() });
         return;
     }
 
     const intervalId = startCountdown(bot, chatId, totalSeconds, timerLabel, undefined, db, null);
-    global.activeTimers[chatId] = intervalId;
+    timer[chatId] = intervalId;
 
     bot.sendMessage(chatId, `⏱ Timer started for ${minutes} minute(s)!`, { ...getMainMenu() });
+});
+
+// /stop
+bot.onText(/\/stop/, (msg) => {
+    const chatId = msg.chat.id;
+    const timer = timers[chatId];
+    if (timer && timer.interval) {
+        clearInterval(timer.interval);
+        delete timers[chatId];
+        bot.sendMessage(chatId, "🛑 Timer stopped.");
+    } else bot.sendMessage(chatId, "No active timer to stop.");
 });
 
 // Callback queries
@@ -236,16 +246,6 @@ bot.on('message', (msg) => {
                 timerInfo.interval = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
             });
     }
-});
-
-// /stop
-bot.onText(/\/stop/, (msg) => {
-    const chatId = msg.chat.id;
-    if (timers[chatId] && timers[chatId].interval) {
-        clearInterval(timers[chatId].interval);
-        delete timers[chatId];
-        bot.sendMessage(chatId, "🛑 Timer stopped.");
-    } else bot.sendMessage(chatId, "No active timer to stop.");
 });
 
 console.log("✅ Telegram Timer Bot is running!");
