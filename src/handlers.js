@@ -63,7 +63,7 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
                 }
 
                 count--;
-            }, 1000);
+            }, 850);
         }
 
         elapsed++;
