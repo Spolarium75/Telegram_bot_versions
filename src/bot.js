@@ -59,8 +59,8 @@ bot.onText(/\/start/, (msg) => {
     );
 
     const startText = `
-    👋 *Welcome!* \nChoose an option below or use shortcuts:
-    /start, /current, /history, /help, /stop, /add
+    👋 *Welcome!* \nChoose an option below or use shortcuts:\n
+    /start | /current | /history | /help | /stop | /add
     `;
 
     bot.sendMessage(chatId, startText, {
@@ -148,9 +148,9 @@ bot.onText(/\/add/, (msg, match) => {
 bot.onText(/\/stop/, (msg) => {
     const chatId = msg.chat.id;
     const timer = timers[chatId];
-    if (timer && timer.total_seconds) {
+    if (timer.total_seconds != null) {
         clearInterval(timer.total_seconds);
-        delete timers[chatId];
+        timer[chatId] = [];
         bot.sendMessage(chatId, "🛑 Timer stopped.");
     } else bot.sendMessage(chatId, "No active timer to stop.");
 });
