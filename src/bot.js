@@ -13,7 +13,8 @@ bot.setMyCommands([
     { command: "current", description: "Show current timer" },
     { command: "history", description: "Show timer history" },
     { command: "help", description: "Show bot help / shortcuts" },
-    { command: "stop", description: "Stop the active timer" }
+    { command: "stop", description: "Stop the active timer" },
+    { command: "add", description: "Add a new timer" }
 ]);
 
 const timers = {};
@@ -58,8 +59,8 @@ bot.onText(/\/start/, (msg) => {
     );
 
     const startText = `
-    👋 *Welcome!* Choose an option below or use shortcuts:
-    /start, /current, /history, /help, /stop
+    👋 *Welcome!* \nChoose an option below or use shortcuts:
+    /start, /current, /history, /help, /stop, /add
     `;
 
     bot.sendMessage(chatId, startText, {
@@ -79,6 +80,7 @@ bot.onText(/\/help/, (msg) => {
     /history - Show timer history
     /help - Show this message
     /stop - Stop the active timer
+    /add - Add a new timer
     `;
 
     bot.sendMessage(chatId, helpText, { parse_mode: "Markdown", ...getMainMenu() });
@@ -90,12 +92,13 @@ bot.onText(/\/current/, (msg) => {
     const timer = timers[chatId];
 
     const remainingSeconds = Math.max(0, Math.floor((timer.totalSeconds) / 1000));
+    const { h, m, s } = formatTime(remainingSeconds);
 
     if (!timer) {
         bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
     } else {
+        bot.sendMessage(chatId, `🕒 ${timer.label} - ${h}h ${m}m ${s}s (⏳ Active)`);
         bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
-        bot.sendMessage(chatId, `🕒 ${timer.label} - ${formatTime(remainingSeconds)} (⏳ Active)`);
     }
 });
 
@@ -131,7 +134,7 @@ bot.onText(/\/add/, (msg, match) => {
     const timer = timers[chatId];
 
     if (timer) {
-        bot.sendMessage(chatId, "❌ You already have an active timer. Use /stop first.", { ...getMainMenu() });
+        bot.sendMessage(chatId, "❌ You already have an active timer. \nUse /stop first.", { ...getMainMenu() });
         return;
     }
 
