@@ -28,7 +28,7 @@ function calculateTransactionTimer(txDigits) {
     const remainingD7 = 8 - D7;
     const remainingD8 = 8 - D8;
 
-    const totalSeconds = remainingD6 * 623 + remainingD7 * 61.8 + remainingD8 * 6;
+    const totalSeconds = remainingD6 * 623 + remainingD7 * 61.6 + remainingD8 * 6;
     const { h, m, s } = formatTime(totalSeconds);
     return { totalSeconds, hours: h, minutes: m, seconds: s, wait: false };
 }
