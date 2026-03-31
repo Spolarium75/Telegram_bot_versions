@@ -80,7 +80,8 @@ bot.onText(/\/help/, (msg) => {
     /history - Show timer history
     /help - Show this message
     /stop - Stop the active timer
-    /add - Add a new timer
+    /add m (<time>) - Add a new manual timer
+    /add t (<digits>) - Add a new transaction timer
     `;
 
     bot.sendMessage(chatId, helpText, { parse_mode: "Markdown", ...getMainMenu() });
@@ -131,27 +132,136 @@ bot.onText(/\/history/, (msg) => {
 });
 
 // ----------- Example: manual /add timer ----------
-bot.onText(/\/add(?:\s+(\d+))?/, (msg, match) => {
+bot.onText(/\/add(?:\s+([mt]))(?:\s+(.+))?/i, (msg, match) => {
     const chatId = msg.chat.id;
-    const minutes = parseInt(match[1], 10);
+    const mode = (match[1] || "").toLowerCase();
+    const value = (match[2] || "").trim();
 
-    if (isNaN(minutes)) {
-        bot.sendMessage(chatId, "❌ Usage: /add 90", { ...getMainMenu() });
+    if (!mode || !value) {
+        bot.sendMessage(
+            chatId,
+            "❌ Usage:\n/add m 90  -> manual timer (90 minutes)\n/add t 012 -> transaction timer (3 digits)",
+            { ...getMainMenu() }
+        );
         return;
     }
 
     if (timers[chatId] && timers[chatId].interval) {
-        bot.sendMessage(chatId, "❌ You already have an active timer.\nUse /stop first.", { ...getMainMenu() });
+        bot.sendMessage(
+            chatId,
+            "❌ You already have an active timer.\nUse /stop first.",
+            { ...getMainMenu() }
+        );
         return;
     }
 
-    const totalSeconds = minutes * 60;
-    const timerLabel = `Manual Timer (${minutes} min)`;
+    // Manual timer
+    if (mode === "m") {
+        const minutes = parseInt(value, 10);
 
-    const timerData = startCountdown(bot, chatId, totalSeconds, timerLabel, undefined, db, null);
-    timers[chatId] = timerData;
+        if (isNaN(minutes) || minutes <= 0) {
+            bot.sendMessage(chatId, "❌ Please enter a valid number of minutes.", { ...getMainMenu() });
+            return;
+        }
 
-    bot.sendMessage(chatId, `⏱ Timer started for ${minutes} minute(s)!`, { ...getMainMenu() });
+        const totalSeconds = minutes * 60;
+        const label = `Manual Timer (${minutes} min)`;
+        const startTime = Math.floor(Date.now() / 1000);
+
+        db.run(
+            `INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
+            [chatId, 'manual', label, totalSeconds, startTime],
+            function(err) {
+                if (err) {
+                    bot.sendMessage(chatId, "❌ Failed to create manual timer.");
+                    return;
+                }
+
+                bot.sendMessage(chatId, `⏱ Manual timer started for ${minutes} minute(s)!`, {
+                    ...getMainMenu()
+                });
+
+                const timerData = startCountdown(
+                    bot,
+                    chatId,
+                    totalSeconds,
+                    label,
+                    [1800, 1200, 600, 300, 60],
+                    db,
+                    this.lastID
+                );
+
+                timerData.type = "manual";
+                timerData.notifications = [1800, 1200, 600, 300, 60];
+                timers[chatId] = timerData;
+            }
+        );
+
+        return;
+    }
+
+    // Transaction timer
+    if (mode === "t") {
+        const txDigits = value;
+
+        if (!/^\d{3}$/.test(txDigits)) {
+            bot.sendMessage(chatId, "❌ Transaction timer needs exactly 3 digits, example: /add t 012", {
+                ...getMainMenu()
+            });
+            return;
+        }
+
+        const { totalSeconds, hours, minutes, seconds, wait } = calculateTransactionTimer(txDigits);
+
+        if (wait) {
+            bot.sendMessage(chatId, "⚠️ 6th digit is 8 or 9 — wait a few minutes then try again.", {
+                ...getMainMenu()
+            });
+            return;
+        }
+
+        const label = `Transaction ${txDigits}`;
+        const startTime = Math.floor(Date.now() / 1000);
+
+        db.run(
+            `INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
+            [chatId, 'transaction', label, totalSeconds, startTime],
+            function(err) {
+                if (err) {
+                    bot.sendMessage(chatId, "❌ Failed to create transaction timer.");
+                    return;
+                }
+
+                bot.sendMessage(
+                    chatId,
+                    `⏳ Transaction timer created!\nTime until next 888: ${hours}h ${minutes}m ${seconds}s`,
+                    { ...getMainMenu() }
+                );
+
+                const timerData = startCountdown(
+                    bot,
+                    chatId,
+                    totalSeconds,
+                    label,
+                    [1800, 1200, 600, 300, 60],
+                    db,
+                    this.lastID
+                );
+
+                timerData.type = "transaction";
+                timerData.notifications = [1800, 1200, 600, 300, 60];
+                timers[chatId] = timerData;
+            }
+        );
+
+        return;
+    }
+
+    bot.sendMessage(
+        chatId,
+        "❌ Unknown timer type.\nUse /add m 90 or /add t 012",
+        { ...getMainMenu() }
+    );
 });
 
 // /stop
@@ -222,7 +332,7 @@ bot.on('callback_query', (query) => {
             break;
         case 'help':
             bot.sendMessage(chatId, "❓ **Timer Bot Help**\n\n" +
-                "⏰ Add Timer - Create a new timer (Manual or Transaction Order)\n" +
+                "⏰ Add Timer - Create a new timer (/add m (time) Manual or /add t (digits) Transaction Order)\n" +
                 "🕒 Current Timer - See your active timer\n" +
                 "📜 Timer History - Last 10 timers\n" +
                 "❓ Help - This message\n\n" +
