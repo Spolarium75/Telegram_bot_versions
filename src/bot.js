@@ -91,15 +91,20 @@ bot.onText(/\/current/, (msg) => {
     const chatId = msg.chat.id;
     const timer = timers[chatId];
 
-    const remainingSeconds = Math.max(0, Math.floor((timer.totalSeconds) / 1000));
+    if (!timer || !timer.interval) {
+        bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
+        return;
+    }
+
+    const elapsed = Math.floor(Date.now() / 1000) - timer.startedAt;
+    const remainingSeconds = Math.max(0, timer.totalSeconds - elapsed);
     const { h, m, s } = formatTime(remainingSeconds);
 
-    if (!timer) {
-        bot.sendMessage(chatId, "❌ No active timer.", { ...getMainMenu() });
-    } else {
-        bot.sendMessage(chatId, `🕒 ${timer.label} - ${h}h ${m}m ${s}s (⏳ Active)`);
-        bot.sendMessage(chatId, "⏱ You have a timer running!", { ...getMainMenu() });
-    }
+    bot.sendMessage(
+        chatId,
+        `🕒 *${timer.label}*\nTime Remaining: ${h}h ${m}m ${s}s\nStatus: ⏳ Active`,
+        { parse_mode: "Markdown", ...getMainMenu() }
+    );
 });
 
 // ----------- /history handler ----------
@@ -126,20 +131,25 @@ bot.onText(/\/history/, (msg) => {
 });
 
 // ----------- Example: manual /add timer ----------
-bot.onText(/\/add/, (msg, match) => {
+bot.onText(/\/add(?:\s+(\d+))?/, (msg, match) => {
     const chatId = msg.chat.id;
-    const minutes = parseInt(match[1]);
-    const totalSeconds = minutes * 60;
-    const timerLabel = `Manual Timer (${minutes} min)`;
-    const timer = timers[chatId];
+    const minutes = parseInt(match[1], 10);
 
-    if (timer) {
-        bot.sendMessage(chatId, "❌ You already have an active timer. \nUse /stop first.", { ...getMainMenu() });
+    if (isNaN(minutes)) {
+        bot.sendMessage(chatId, "❌ Usage: /add 90", { ...getMainMenu() });
         return;
     }
 
-    const intervalId = startCountdown(bot, chatId, totalSeconds, timerLabel, undefined, db, null);
-    timer[chatId] = intervalId;
+    if (timers[chatId] && timers[chatId].interval) {
+        bot.sendMessage(chatId, "❌ You already have an active timer.\nUse /stop first.", { ...getMainMenu() });
+        return;
+    }
+
+    const totalSeconds = minutes * 60;
+    const timerLabel = `Manual Timer (${minutes} min)`;
+
+    const timerData = startCountdown(bot, chatId, totalSeconds, timerLabel, undefined, db, null);
+    timers[chatId] = timerData;
 
     bot.sendMessage(chatId, `⏱ Timer started for ${minutes} minute(s)!`, { ...getMainMenu() });
 });
@@ -148,11 +158,21 @@ bot.onText(/\/add/, (msg, match) => {
 bot.onText(/\/stop/, (msg) => {
     const chatId = msg.chat.id;
     const timer = timers[chatId];
-    if (timer.total_seconds != null) {
-        clearInterval(timer.total_seconds);
-        timer[chatId] = [];
-        bot.sendMessage("🛑 Timer stopped.");
-    } else bot.sendMessage(chatId, "No active timer to stop.");
+
+    if (!timer || !timer.interval) {
+        bot.sendMessage(chatId, "❌ No active timer to stop.", { ...getMainMenu() });
+        return;
+    }
+
+    clearInterval(timer.interval);
+
+    if (timer.timerId) {
+        db.run(`UPDATE timers SET finished = 1 WHERE id = ?`, [timer.timerId]);
+    }
+
+    delete timers[chatId];
+
+    bot.sendMessage(chatId, "🛑 Timer stopped.", { ...getMainMenu() });
 });
 
 // Callback queries
@@ -230,8 +250,9 @@ bot.on('message', (msg) => {
         db.run(`INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
             [chatId, 'manual', label, totalSeconds, startTime], function(err){
                 bot.sendMessage(chatId, `⏰ Timer set for ${mins} minutes!`);
-                timerInfo.interval = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
-            });
+                timers[chatId] = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
+                timers[chatId].type = 'manual';
+                timers[chatId].notifications = timerInfo.notifications;            });
     }
 
     if (timerInfo.type === 'transaction') {
@@ -245,8 +266,9 @@ bot.on('message', (msg) => {
         db.run(`INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
             [chatId, 'transaction', label, totalSeconds, startTime], function(err){
                 bot.sendMessage(chatId, `⏳ Timer created! Time until next 888: ${hours}h ${minutes}m ${seconds}s`);
-                timerInfo.interval = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
-            });
+                timers[chatId] = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
+                timers[chatId].type = 'transaction';
+                timers[chatId].notifications = timerInfo.notifications;            });
     }
 });
 

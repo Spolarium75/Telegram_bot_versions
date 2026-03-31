@@ -1,5 +1,3 @@
-// src/handlers.js
-
 function getMainMenu() {
     return {
         reply_markup: {
@@ -13,17 +11,18 @@ function getMainMenu() {
     };
 }
 
-function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [1800,1200,600,300,60,10], db, timerId) {
+function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [1800,1200,600,300,60], db, timerId) {
     const sentCheckpoints = new Set();
-    let elapsed = 0;
+    const startedAt = Math.floor(Date.now() / 1000);
 
     const interval = setInterval(() => {
-        const remaining = totalSeconds - elapsed;
+        const elapsed = Math.floor(Date.now() / 1000) - startedAt;
+        const remaining = Math.max(0, totalSeconds - elapsed);
 
-        // Send checkpoint reminders
-        for (let cp of notifications) {
-            if (remaining <= cp && !sentCheckpoints.has(cp)) {
-                let msg =
+        // checkpoint reminders
+        for (const cp of notifications) {
+            if (remaining === cp && !sentCheckpoints.has(cp)) {
+                const msg =
                     cp >= 60
                         ? `⏳ *${timerLabel}*: ${Math.floor(cp / 60)} minute${Math.floor(cp / 60) !== 1 ? "s" : ""} remaining!`
                         : `⏳ *${timerLabel}*: ${cp} second${cp !== 1 ? "s" : ""} remaining!`;
@@ -33,43 +32,42 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
             }
         }
 
-        // Final countdown
+        // last 10 seconds countdown during the same timer
+        if (remaining <= 10 && remaining > 0 && !sentCheckpoints.has(`final-${remaining}`)) {
+            sentCheckpoints.add(`final-${remaining}`);
+            bot.sendMessage(
+                chatId,
+                `⏱ *${timerLabel}*: ${remaining} second${remaining !== 1 ? "s" : ""} remaining!`,
+                { parse_mode: "Markdown" }
+            );
+        }
+
+        // finish immediately at zero
         if (remaining <= 0) {
             clearInterval(interval);
 
-            let count = 10;
-            const finalInterval = setInterval(() => {
-                if (count > 0) {
-                    bot.sendMessage(
-                        chatId,
-                        `⏱ *${timerLabel}*: ${count} second${count !== 1 ? "s" : ""} remaining!`,
-                        { parse_mode: "Markdown" }
-                    );
-                } else {
-                    bot.sendMessage(
-                        chatId,
-                        `🎉 *${timerLabel}* has reached the target time!\n\nWhat would you like to do next?`,
-                        {
-                            parse_mode: "Markdown",
-                            ...getMainMenu()
-                        }
-                    );
+            if (db && timerId) {
+                db.run(`UPDATE timers SET finished = 1 WHERE id = ?`, [timerId]);
+            }
 
-                    if (db && timerId) {
-                        db.run(`UPDATE timers SET finished = 1 WHERE id = ?`, [timerId]);
-                    }
-
-                    clearInterval(finalInterval);
+            bot.sendMessage(
+                chatId,
+                `🎉 *${timerLabel}* has reached the target time!\n\nWhat would you like to do next?`,
+                {
+                    parse_mode: "Markdown",
+                    ...getMainMenu()
                 }
-
-                count--;
-            }, 850);
+            );
         }
-
-        elapsed++;
     }, 1000);
 
-    return interval;
+    return {
+        interval,
+        totalSeconds,
+        startedAt,
+        label: timerLabel,
+        timerId
+    };
 }
 
 module.exports = { startCountdown, getMainMenu };
