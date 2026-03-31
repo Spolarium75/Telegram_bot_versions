@@ -21,7 +21,7 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
 
         // checkpoint reminders
         for (const cp of notifications) {
-            if (remaining === cp && !sentCheckpoints.has(cp)) {
+            if (remaining <= cp && remaining > cp - 2 && !sentCheckpoints.has(cp)) {
                 const msg =
                     cp >= 60
                         ? `⏳ *${timerLabel}*: ${Math.floor(cp / 60)} minute${Math.floor(cp / 60) !== 1 ? "s" : ""} remaining!`
