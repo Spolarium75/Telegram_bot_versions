@@ -22,9 +22,9 @@ const timers = {};
 function calculateTransactionTimer(txDigits) {
     const [D6, D7, D8] = txDigits.split('').map(Number);
 
-    if (D6 === 8 || D6 === 9) return { wait: true };
+    if (D6 === 3 && D7 === 3 && D8 === 3) return { wait: true };
 
-    const remainingD6 = 8 - D6;
+    const remainingD6 = 3 - D6;
     const remainingD7 = 8 - D7;
     const remainingD8 = 8 - D8;
 
