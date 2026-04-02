@@ -25,10 +25,10 @@ function calculateTransactionTimer(txDigits) {
     if (D6 === 3 && D7 === 3 && D8 === 3) return { wait: true };
 
     const remainingD6 = 5 - D6;
-    const remainingD7 = 5 - D7;
+    const remainingD7 = 8 - D7;
     const remainingD8 = 8 - D8;
 
-    const totalSeconds = remainingD6 * 623 + remainingD7 * 61.5 + remainingD8 * 5.8;
+    const totalSeconds = remainingD6 * 623 + remainingD7 * 61.5 + remainingD8 * 5.85;
     const { h, m, s } = formatTime(totalSeconds);
     return { totalSeconds, hours: h, minutes: m, seconds: s, wait: false };
 }
