@@ -22,13 +22,13 @@ const timers = {};
 function calculateTransactionTimer(txDigits) {
     const [D6, D7, D8] = txDigits.split('').map(Number);
 
-    if (D6 === 8 && D7 === 8) return { wait: true };
+    if (D6 === 8 && D7 === 8 && D8 >= 8) return { wait: true };
 
     const remainingD6 = 8 - D6;
     const remainingD7 = 8 - D7;
     const remainingD8 = 8 - D8;
 
-    const totalSeconds = remainingD6 * 623 + remainingD7 * 61.5 + remainingD8 * 5.88;
+    const totalSeconds = remainingD6 * 623 + remainingD7 * 61.5 + remainingD8 * 5.95;
     const { h, m, s } = formatTime(totalSeconds);
     return { totalSeconds, hours: h, minutes: m, seconds: s, wait: false };
 }
