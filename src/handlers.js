@@ -19,7 +19,6 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
         const elapsed = Math.floor(Date.now() / 1000) - startedAt;
         const remaining = Math.max(0, totalSeconds - elapsed);
 
-        // checkpoint reminders
         for (const cp of notifications) {
             if (remaining <= cp && remaining > cp - 2 && !sentCheckpoints.has(cp)) {
                 const msg =
@@ -32,7 +31,6 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
             }
         }
 
-        // last 10 seconds countdown during the same timer
         if (remaining <= 10 && remaining > 0 && !sentCheckpoints.has(`final-${remaining}`)) {
             sentCheckpoints.add(`final-${remaining}`);
             bot.sendMessage(
@@ -42,7 +40,6 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
             );
         }
 
-        // finish immediately at zero
         if (remaining <= 0) {
             clearInterval(interval);
 

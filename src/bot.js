@@ -22,7 +22,7 @@ const timers = {};
 function calculateTransactionTimer(txDigits) {
     const [D6, D7, D8] = txDigits.split('').map(Number);
 
-    if (D6 === 8 && D7 === 8 && D8 >= 8) return { wait: true };
+    if (D6 >= 8 && D7 >= 8 && D8 >= 8) return { wait: true };
 
     const remainingD6 = 8 - D6;
     const remainingD7 = 8 - D7;
@@ -69,7 +69,6 @@ bot.onText(/\/start/, (msg) => {
     });
 });
 
-// ----------- /help handler ----------
 bot.onText(/\/help/, (msg) => {
     const chatId = msg.chat.id;
 
@@ -87,7 +86,6 @@ bot.onText(/\/help/, (msg) => {
     bot.sendMessage(chatId, helpText, { parse_mode: "Markdown", ...getMainMenu() });
 });
 
-// ----------- /current handler ----------
 bot.onText(/\/current/, (msg) => {
     const chatId = msg.chat.id;
     const timer = timers[chatId];
@@ -108,7 +106,6 @@ bot.onText(/\/current/, (msg) => {
     );
 });
 
-// ----------- /history handler ----------
 bot.onText(/\/history/, (msg) => {
     const chatId = msg.chat.id;
 
@@ -131,7 +128,7 @@ bot.onText(/\/history/, (msg) => {
     );
 });
 
-// ----------- Example: manual /add timer ----------
+
 bot.onText(/\/add(?:\s+([mt]))(?:\s+(.+))?/i, (msg, match) => {
     const chatId = msg.chat.id;
     const mode = (match[1] || "").toLowerCase();
@@ -155,7 +152,6 @@ bot.onText(/\/add(?:\s+([mt]))(?:\s+(.+))?/i, (msg, match) => {
         return;
     }
 
-    // Manual timer
     if (mode === "m") {
         const minutes = parseInt(value, 10);
 
@@ -200,7 +196,6 @@ bot.onText(/\/add(?:\s+([mt]))(?:\s+(.+))?/i, (msg, match) => {
         return;
     }
 
-    // Transaction timer
     if (mode === "t") {
         const txDigits = value;
 
@@ -264,7 +259,6 @@ bot.onText(/\/add(?:\s+([mt]))(?:\s+(.+))?/i, (msg, match) => {
     );
 });
 
-// /stop
 bot.onText(/\/stop/, (msg) => {
     const chatId = msg.chat.id;
     const timer = timers[chatId];
@@ -281,11 +275,10 @@ bot.onText(/\/stop/, (msg) => {
     }
 
     delete timers[chatId];
-
     bot.sendMessage(chatId, "🛑 Timer stopped.", { ...getMainMenu() });
 });
 
-// Callback queries
+
 bot.on('callback_query', (query) => {
     const chatId = query.message.chat.id;
 
@@ -343,7 +336,7 @@ bot.on('callback_query', (query) => {
     }
 });
 
-// Message handling
+
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     if (msg.text.startsWith('/')) return;
@@ -354,6 +347,7 @@ bot.on('message', (msg) => {
     if (timerInfo.type === 'manual') {
         const mins = parseInt(msg.text);
         if (isNaN(mins)) return bot.sendMessage(chatId, "❌ Please send a valid number in minutes.");
+
         const totalSeconds = mins * 60;
         const label = `Manual Timer`;
         const startTime = Math.floor(Date.now()/1000);
@@ -382,4 +376,4 @@ bot.on('message', (msg) => {
     }
 });
 
-console.log("✅ Telegram Timer Bot is running!");
+console.log("Telegram Timer Bot is running!");
