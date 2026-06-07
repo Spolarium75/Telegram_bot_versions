@@ -35,7 +35,7 @@ function startCountdown(bot, chatId, totalSeconds, timerLabel, notifications = [
             sentCheckpoints.add(`final-${remaining}`);
             bot.sendMessage(
                 chatId,
-                `⏱ *${timerLabel}*: ${remaining} second${remaining !== 1 ? "s" : ""} remaining!`,
+                `⏱ *${timerLabel}*: ${Math.trunc(remaining)} second${remaining !== 1 ? "s" : ""} remaining!`,
                 { parse_mode: "Markdown" }
             );
         }
