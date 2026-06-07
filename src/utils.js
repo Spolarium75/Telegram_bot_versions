@@ -3,7 +3,7 @@ function formatTime(totalSeconds) {
 
     const h = Math.floor(safeSeconds / 3600);
     const m = Math.floor((safeSeconds % 3600) / 60);
-    const s = safeSeconds % 60;
+    const s = Math.trunc(safeSeconds % 60);
     return { h, m, s };
 }
 
