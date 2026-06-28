@@ -5,6 +5,6 @@ function formatTime(totalSeconds) {
     const m = Math.floor((safeSeconds % 3600) / 60);
     const s = Math.trunc(safeSeconds % 60);
     return { h, m, s };
-}
+} 
 
 module.exports = { formatTime };
