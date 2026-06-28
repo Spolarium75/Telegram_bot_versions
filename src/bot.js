@@ -368,22 +368,27 @@ bot.on('message', (msg) => {
         if (wait) return bot.sendMessage(chatId, "⚠️ 6th digit is 8|9 — wait a few minutes then try again.");
 
         const date = new Date(Date.now());
-        date.setHours(date.getHours() + duration.hours);
-        date.setMinutes(date.getMinutes() + duration.minutes);
+        date.setHours(date.getHours() + hours);
+        date.setMinutes(date.getMinutes() + minutes);
 
-        let h = date.getHours().padStart(2, '0');
-        const m = date.getMinutes().padStart(2, '0');
+        let h = date.getHours();
+        const m = date.getMinutes();
         const ampm = h >= 12 ? 'PM' : 'AM';
         
         h = h % 12;
         h = h ? h : 12;
 
-        const formattedTime = `Approximately ${h}:${m} ${ampm} before the next 888 pattern.`;
+        const hStr = String(h).padStart(2, '0');
+        const mStr = String(m).padStart(2, '0');
+
+        const formattedTime = `Approximately ${hStr}:${mStr} ${ampm} before the next 888 pattern.`;
 
         const label = `Transaction ${txDigits}`;
         const startTime = Math.floor(Date.now()/1000);
         db.run(`INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
             [chatId, 'transaction', label, totalSeconds, startTime], function(err){
+                if (err) console.error("DB error: ", err);
+                
                 bot.sendMessage(chatId, `⏳ Timer created! Time until next 888: ${hours}h ${minutes}m ${seconds}s`);
                 bot.sendMessage(chatId, formattedTime);
                 timers[chatId] = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
