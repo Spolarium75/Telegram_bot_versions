@@ -388,7 +388,7 @@ bot.on('message', (msg) => {
         db.run(`INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
             [chatId, 'transaction', label, totalSeconds, startTime], function(err){
                 if (err) console.error("DB error: ", err);
-                
+
                 bot.sendMessage(chatId, `⏳ Timer created! Time until next 888: ${hours}h ${minutes}m ${seconds}s`);
                 bot.sendMessage(chatId, formattedTime);
                 timers[chatId] = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
@@ -398,3 +398,5 @@ bot.on('message', (msg) => {
 });
 
 console.log("Telegram Timer Bot is running!");
+console.log("Server Time:", new Date().toString());
+console.log("Timezone Offset:", new Date().getTimezoneOffset());   
