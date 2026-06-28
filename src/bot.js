@@ -33,20 +33,6 @@ function calculateTransactionTimer(txDigits) {
     return { totalSeconds, hours: h, minutes: m, seconds: s, wait: false };
 }
 
-function formatExpectedTime(txDigits) {
-    const { hours, minutes} = calculateTransactionTimer(txDigits);
-
-    const date = new Date(Date.now());
-    let h = date.getHours().padStart(2, '0') + hours;
-    const m = date.getMinutes().padStart(2, '0') + minutes;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    
-    h = h % 12;
-    h = h ? h : 12;
-    
-    return `Approximately ${h}:${m} ${ampm} before the next 888 pattern.`;
-}
-
 
 db.all(`SELECT * FROM timers WHERE finished = 0`, [], (err, rows) => {
     if (rows) {
@@ -376,15 +362,30 @@ bot.on('message', (msg) => {
     if (timerInfo.type === 'transaction') {
         const txDigits = msg.text.trim();
         if (!/^\d{3}$/.test(txDigits)) return bot.sendMessage(chatId, "❌ Send exactly 3 digits (6th–8th).");
+
         const { totalSeconds, hours, minutes, seconds, wait } = calculateTransactionTimer(txDigits);
-        const expectedTime = formatExpectedTime(txDigits);
+
         if (wait) return bot.sendMessage(chatId, "⚠️ 6th digit is 8|9 — wait a few minutes then try again.");
+
+        const date = new Date(Date.now());
+        date.setHours(date.getHours() + duration.hours);
+        date.setMinutes(date.getMinutes() + duration.minutes);
+
+        let h = date.getHours().padStart(2, '0');
+        const m = date.getMinutes().padStart(2, '0');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        
+        h = h % 12;
+        h = h ? h : 12;
+
+        const formattedTime = `Approximately ${h}:${m} ${ampm} before the next 888 pattern.`;
 
         const label = `Transaction ${txDigits}`;
         const startTime = Math.floor(Date.now()/1000);
         db.run(`INSERT INTO timers (chat_id, type, label, total_seconds, start_time) VALUES (?, ?, ?, ?, ?)`,
             [chatId, 'transaction', label, totalSeconds, startTime], function(err){
-                bot.sendMessage(chatId, `⏳ Timer created! Time until next 888: ${hours}h ${minutes}m ${seconds}s\n${expectedTime}`);
+                bot.sendMessage(chatId, `⏳ Timer created! Time until next 888: ${hours}h ${minutes}m ${seconds}s`);
+                bot.sendMessage(chatId, formattedTime);
                 timers[chatId] = startCountdown(bot, chatId, totalSeconds, label, timerInfo.notifications, db, this.lastID);
                 timers[chatId].type = 'transaction';
                 timers[chatId].notifications = timerInfo.notifications;            });
